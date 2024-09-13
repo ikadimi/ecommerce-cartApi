@@ -1,5 +1,6 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const cors = require('cors');
 const Cart = require('./models/cart.model');
 
 const app = express();
@@ -8,6 +9,27 @@ const PORT = 3002;
 // Middleware to parse JSON bodies
 app.use(express.json());
 
+// Middleware to allow cross-origin requests
+app.use((req, res, next) => {
+	res.header('Access-Control-Allow-Origin', '*');
+	res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+	next();
+  });
+
+const whitelist = ['http://localhost:3300', 'http://localhost:4200'];
+const corsOptions = {
+    credentials: true,
+    origin: function (origin, callback) {
+        console.log('is it even reaching here ?????')
+        if (whitelist.indexOf(origin) !== -1 || !origin) {
+        callback(null, true)
+        } else {
+        callback(new Error('Not allowed by CORS'))
+        }
+    }
+}
+app.use(cors(corsOptions));
+
 // Connect to MongoDB
 const url = 'mongodb://localhost:27017';
 const dbName = 'ecommerce';
@@ -15,23 +37,39 @@ mongoose.connect(`${url}/${dbName}`)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.log(err));
 
+// Get all items in the cart
+app.get('/', async (req, res) => {
+    const userId = req.headers['x-user-id'];
+    if (!userId) {
+        return res.status(400).send('User ID is required');
+    }
 
+    try {
+        const cart = await Cart.findOne({ userId });
+        res.status(200).send(cart);
+    } catch (error) {
+        res.status(500).send('Server error');
+    }   
+});
 
 // Add or update an item in the cart
 app.post('/add', async (req, res) => {
-    console.log({...req})
     if (!req || !req.body) {
         return res.status(400).send('body is empty');
     }
-    const { userId, productId, quantity } = req.body;
+
+    const userId = req.headers['x-user-id'];
+    const { productId, quantity } = req.body;
 
     if (!userId || !productId || !quantity) {
         return res.status(400).send('All fields are required');
     }
 
+    console.log(userId, productId, quantity);
     try {
         let cart = await Cart.findOne({ userId });
 
+        console.log('cart', cart);
         if (cart) {
             // Check if the product is already in the cart
             const itemIndex = cart.items.findIndex(item => item.productId === productId);
@@ -51,7 +89,9 @@ app.post('/add', async (req, res) => {
             });
         }
 
+        console.log('new cart ', cart)
         await cart.save();
+        console.log('cart saved')
         res.status(200).send(cart);
     } catch (error) {
         res.status(500).send('Server error');
@@ -60,7 +100,8 @@ app.post('/add', async (req, res) => {
 
 // Modify the quantity of a product in the cart
 app.put('/update', async (req, res) => {
-    const { userId, productId, quantity } = req.body;
+    const userId = req.headers['x-user-id'];
+    const { productId, quantity } = req.body;
 
     if (!userId || !productId || !quantity) {
         return res.status(400).send('All fields are required');
@@ -90,8 +131,10 @@ app.put('/update', async (req, res) => {
 
 // Remove an item from the cart
 app.delete('/remove', async (req, res) => {
-    const { userId, productId } = req.body;
+    const userId = req.headers['x-user-id'];
+    const { productId } = req.query;
 
+    console.log(userId, productId, {...req})
     if (!userId || !productId) {
         return res.status(400).send('All fields are required');
     }

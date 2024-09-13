@@ -7,7 +7,6 @@ const cartItemSchema = new Schema({
     {
       productId: { type: String, required: true },
       quantity: { type: Number, required: true, min: 1 },
-      price: { type: Number, required: true }, // Optional, can be fetched from product service
     }
   ]
 });

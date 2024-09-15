@@ -15,20 +15,10 @@ app.use((req, res, next) => {
 	res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
 	next();
   });
-
-const whitelist = ['http://localhost:3300', 'http://localhost:4200'];
-const corsOptions = {
-    credentials: true,
-    origin: function (origin, callback) {
-        console.log('is it even reaching here ?????')
-        if (whitelist.indexOf(origin) !== -1 || !origin) {
-        callback(null, true)
-        } else {
-        callback(new Error('Not allowed by CORS'))
-        }
-    }
-}
-app.use(cors(corsOptions));
+app.use(cors({
+  credentials: true,
+  origin: 'http://localhost:4200'
+}));
 
 // Connect to MongoDB
 const url = 'mongodb://localhost:27017';

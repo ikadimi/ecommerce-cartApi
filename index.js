@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const Cart = require('./models/cart.model');
+const createResponse = require('./models/response.model');
 
 const app = express();
 const PORT = 3002;
@@ -31,35 +32,33 @@ mongoose.connect(`${url}/${dbName}`)
 app.get('/', async (req, res) => {
     const userId = req.headers['x-user-id'];
     if (!userId) {
-        return res.status(400).send('User ID is required');
+        return res.status(400).send({ message: 'User ID is required' });
     }
 
     try {
         const cart = await Cart.findOne({ userId });
         res.status(200).send(cart);
     } catch (error) {
-        res.status(500).send('Server error');
+        res.status(500).send({ message: 'Server error' });
     }   
 });
 
 // Add or update an item in the cart
 app.post('/add', async (req, res) => {
     if (!req || !req.body) {
-        return res.status(400).send('body is empty');
+        return res.status(400).send({ message: 'body is empty' });
     }
 
     const userId = req.headers['x-user-id'];
     const { productId, quantity } = req.body;
 
     if (!userId || !productId || !quantity) {
-        return res.status(400).send('All fields are required');
+        return res.status(400).send({ message: 'All fields are required' });
     }
 
-    console.log(userId, productId, quantity);
     try {
         let cart = await Cart.findOne({ userId });
 
-        console.log('cart', cart);
         if (cart) {
             // Check if the product is already in the cart
             const itemIndex = cart.items.findIndex(item => item.productId === productId);
@@ -79,12 +78,10 @@ app.post('/add', async (req, res) => {
             });
         }
 
-        console.log('new cart ', cart)
         await cart.save();
-        console.log('cart saved')
-        res.status(200).send(cart);
+        res.status(200).send(createResponse(true, 'Item added successfully', cart));
     } catch (error) {
-        res.status(500).send('Server error');
+        res.status(500).send({ message: 'Server error' });
     }
 });
 
@@ -94,7 +91,7 @@ app.put('/update', async (req, res) => {
     const { productId, quantity } = req.body;
 
     if (!userId || !productId || !quantity) {
-        return res.status(400).send('All fields are required');
+        return res.status(400).send({ message: 'All fields are required' });
     }
 
     try {
@@ -107,15 +104,15 @@ app.put('/update', async (req, res) => {
                 // Update the quantity of the item
                 cart.items[itemIndex].quantity = quantity;
                 await cart.save();
-                return res.status(200).send(cart);
+                return res.status(200).send(createResponse(true, 'Quantity updated successfully', cart));
             } else {
-                return res.status(404).send('Product not found in cart');
+                return res.status(404).send({ message: 'Product not found in cart' });
             }
         } else {
-            return res.status(404).send('Cart not found');
+            return res.status(404).send({ message: 'Cart not found' });
         }
     } catch (error) {
-        res.status(500).send('Server error');
+        res.status(500).send({ message: 'Server error' });
     }
 });
 
@@ -126,7 +123,7 @@ app.delete('/remove', async (req, res) => {
 
     console.log(userId, productId, {...req})
     if (!userId || !productId) {
-        return res.status(400).send('All fields are required');
+        return res.status(400).send({ message: 'All fields are required' })
     }
 
     try {
@@ -136,12 +133,12 @@ app.delete('/remove', async (req, res) => {
             cart.items = cart.items.filter(item => item.productId !== productId);
 
             await cart.save();
-            res.status(200).send(cart);
+            res.status(200).send(createResponse(true, 'Item removed successfully', cart));
         } else {
-            return res.status(404).send('Cart not found');
+            return res.status(404).send({ message: 'Cart not found' });
         }
     } catch (error) {
-        res.status(500).send('Server error');
+        res.status(500).send({ message: 'Server error' });
     }
 });
 

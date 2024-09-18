@@ -1,4 +1,5 @@
 const express = require('express');
+const axios = require('axios');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const Cart = require('./models/cart.model');
@@ -6,6 +7,7 @@ const createResponse = require('./models/response.model');
 
 const app = express();
 const PORT = 3002;
+const PRODUCT_API_URL = 'http://localhost:3000';
 
 // Middleware to parse JSON bodies
 app.use(express.json());
@@ -57,33 +59,62 @@ app.post('/add', async (req, res) => {
     }
 
     try {
+        // Fetch product details from catalog microservice
+        console.log('fetching product', productId)
+        const productResponse = await axios.get(`${PRODUCT_API_URL}/products/${productId}`);
+        const product = productResponse.data;
+
+        console.log(product)
+        if (!product) {
+            return res.status(404).send({ message: 'Product not found' });
+        }
+
         let cart = await Cart.findOne({ userId });
 
         if (cart) {
             // Check if the product is already in the cart
-            const itemIndex = cart.items.findIndex(item => item.productId === productId);
+            const itemIndex = cart.items.findIndex(item => item.productId.toString() === productId);
 
             if (itemIndex > -1) {
                 // Update quantity if product exists in the cart
                 cart.items[itemIndex].quantity += quantity;
             } else {
                 // Add new product to the cart
-                cart.items.push({ productId, quantity });
+                cart.items.push({
+                    productId,
+                    quantity,
+                    price: product.price // Store the product price at the time of adding to cart
+                });
             }
         } else {
             // Create a new cart if not exists
             cart = new Cart({
                 userId,
-                items: [{ productId, quantity }]
+                items: [{
+                    productId,
+                    quantity,
+                    price: product.price // Store the product price
+                }]
             });
         }
 
+        console.log('cart created', cart)
+
+        // Calculate total price
+        cart.totalPrice = cart.items.reduce((total, item) => total + item.price * item.quantity, 0);
+
+        console.log('total price', cart)
+
+
         await cart.save();
+        console.log('cart saved')
         res.status(200).send(createResponse(true, 'Item added successfully', cart));
     } catch (error) {
+        console.log(error)
         res.status(500).send({ message: 'Server error' });
     }
 });
+
 
 // Modify the quantity of a product in the cart
 app.put('/update', async (req, res) => {
@@ -137,6 +168,19 @@ app.delete('/remove', async (req, res) => {
         } else {
             return res.status(404).send({ message: 'Cart not found' });
         }
+    } catch (error) {
+        res.status(500).send({ message: 'Server error' });
+    }
+});
+
+app.delete('/clear', async (req, res) => {
+    const userId = req.headers['x-user-id'];
+    if (!userId) {
+        return res.status(400).send({ message: 'User not found' })
+    }    
+    try { 
+        const cart = await Cart.findOneAndDelete({ userId });
+        res.status(200).send(createResponse(true, 'Cart cleared successfully', cart));
     } catch (error) {
         res.status(500).send({ message: 'Server error' });
     }

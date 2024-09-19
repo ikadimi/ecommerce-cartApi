@@ -82,6 +82,7 @@ app.post('/add', async (req, res) => {
                 // Add new product to the cart
                 cart.items.push({
                     productId,
+                    name: product.name,
                     quantity,
                     price: product.price // Store the product price at the time of adding to cart
                 });
@@ -92,6 +93,7 @@ app.post('/add', async (req, res) => {
                 userId,
                 items: [{
                     productId,
+                    name: product.name,
                     quantity,
                     price: product.price // Store the product price
                 }]
@@ -132,6 +134,12 @@ app.put('/update', async (req, res) => {
             const itemIndex = cart.items.findIndex(item => item.productId === productId);
 
             if (itemIndex > -1) {
+                // check if quantity is less than stock and more than 0
+                const productResponse = await axios.get(`${PRODUCT_API_URL}/products/${productId}`);
+                const product = productResponse.data;
+                if (quantity > product.stock || quantity <= 0) {
+                    return res.status(400).send({ message: 'Quantity is not valid' });
+                }
                 // Update the quantity of the item
                 cart.items[itemIndex].quantity = quantity;
                 await cart.save();

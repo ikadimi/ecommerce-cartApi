@@ -5,6 +5,7 @@ const cartSchema = new mongoose.Schema({
   items: [
     {
       productId: { type: String, ref: 'Product', required: true },
+      name: { type: String, required: true },
       quantity: { type: Number, required: true },
       price: { type: Number, required: true } // Store price of the product at the time of adding to cart
     }

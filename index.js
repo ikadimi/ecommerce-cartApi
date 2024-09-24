@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
 const mongoose = require('mongoose');
@@ -6,8 +7,8 @@ const Cart = require('./models/cart.model');
 const createResponse = require('./models/response.model');
 
 const app = express();
-const PORT = 3002;
-const PRODUCT_API_URL = 'http://localhost:3000';
+const PORT = process.env.PORT;
+const PRODUCT_API_URL = process.env.PRODUCT_API_URL;
 
 // Middleware to parse JSON bodies
 app.use(express.json());
@@ -20,12 +21,12 @@ app.use((req, res, next) => {
   });
 app.use(cors({
   credentials: true,
-  origin: 'http://localhost:4200'
+  origin: process.env.CLIENT_URL
 }));
 
 // Connect to MongoDB
-const url = 'mongodb://localhost:27017';
-const dbName = 'ecommerce';
+const url = process.env.DB_URL;
+const dbName = process.env.DB_NAME;
 mongoose.connect(`${url}/${dbName}`)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.log(err));
@@ -142,6 +143,7 @@ app.put('/update', async (req, res) => {
                 }
                 // Update the quantity of the item
                 cart.items[itemIndex].quantity = quantity;
+                cart.totalPrice = cart.items.reduce((total, item) => total + item.price * item.quantity, 0);
                 await cart.save();
                 return res.status(200).send(createResponse(true, 'Quantity updated successfully', cart));
             } else {
@@ -170,6 +172,7 @@ app.delete('/remove', async (req, res) => {
 
         if (cart) {
             cart.items = cart.items.filter(item => item.productId !== productId);
+            cart.totalPrice = cart.items.reduce((total, item) => total + item.price * item.quantity, 0);
 
             await cart.save();
             res.status(200).send(createResponse(true, 'Item removed successfully', cart));

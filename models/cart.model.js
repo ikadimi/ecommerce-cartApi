@@ -14,11 +14,11 @@ const cartSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-// Method to calculate total price
-// cartSchema.methods.calculateTotalPrice = function () {
-//   this.totalPrice = this.items.reduce((total, item) => {
-//     return total + item.price * item.quantity;
-//   }, 0);
-// };
+//Method to calculate total price
+cartSchema.methods.calculateTotalPrice = function () {
+  this.totalPrice = this.items.reduce((total, item) => {
+    return total + item.price * item.quantity;
+  }, 0);
+};
 
 module.exports = mongoose.model('Cart', cartSchema);
